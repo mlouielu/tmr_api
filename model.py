@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List
 import torch.nn as nn
 import os
 
@@ -64,8 +64,7 @@ class TMR_textencoder(nn.Module):
         )
 
     def get_last_hidden_state(self, texts: List[str],
-                              return_mask: bool = False
-                              ) -> Union[Tensor, tuple[Tensor, Tensor]]:
+                              return_mask: bool = False):
         encoded_inputs = self.tokenizer(texts, return_tensors="pt", padding=True)
         output = self.text_model(**encoded_inputs.to(self.text_model.device))
         if not return_mask:
