@@ -1,6 +1,5 @@
 torch
 orjson
 numpy
-gradio
 gdown
 transformers
