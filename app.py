@@ -11,13 +11,9 @@ from load import load_unit_motion_embs_splits, load_keyids_splits
 
 
 WEBSITE = """
-<div class="embed_hidden">
-
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous">
-<link href="https://mathis.petrovich.fr/tmr/css/style.css" rel="stylesheet">
-<link href="https://mathis.petrovich.fr/tmr/css/media.css" rel="stylesheet">
 
-
+<div class="embed_hidden">
 <h1 style='text-align: center'>TMR: Text-to-Motion Retrieval Using Contrastive 3D Human Motion Synthesis </h1>
 
 <h2 style='text-align: center'>
