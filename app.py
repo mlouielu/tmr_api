@@ -10,7 +10,41 @@ from load import load_model, load_json
 from load import load_unit_motion_embs_splits, load_keyids_splits
 
 
+WEBSITE = """
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous">
+<link href="https://mathis.petrovich.fr/tmr/css/style.css" rel="stylesheet">
+<link href="https://mathis.petrovich.fr/tmr/css/media.css" rel="stylesheet">
+
+
+<h1 style='text-align: center'>TMR: Text-to-Motion Retrieval Using Contrastive 3D Human Motion Synthesis </h1>
+
+<h2 style='text-align: center'>
+<a href="https://mathis.petrovich.fr" target="_blank"><nobr>Mathis Petrovich</nobr></a> &emsp;
+<a href="https://ps.is.mpg.de/~black" target="_blank"><nobr>Michael J. Black</nobr></a> &emsp;
+<a href="https://imagine.enpc.fr/~varolg" target="_blank"><nobr>G&uumll Varol</nobr></a>
+</h2>
+
+<h2 style='text-align: center'>
+<nobr>arXiv 2023</nobr>
+</h2>
+
+<h3 style="text-align:center;">
+<a target="_blank" href="https://arxiv.org/abs/XXXX.XXXXX"> <button type="button" class="btn btn-primary btn-lg"> Paper </button></a>
+<a target="_blank" href="https://github.com/Mathux/TMR"> <button type="button" class="btn btn-primary btn-lg"> Code </button></a>
+<a target="_blank" href="https://mathis.petrovich.fr/tmr"> <button type="button" class="btn btn-primary btn-lg"> Webpage </button></a>
+<a target="_blank" href="https://mathis.petrovich.fr/tmr/tmr.bib"> <button type="button" class="btn btn-primary btn-lg"> BibTex </button></a>
+</h3>
+
+<h3> Description </h3>
+<p>
+This space illustrates <a href='https://mathis.petrovich.fr/tmr/' target='_blank'><b>TMR</b></a>, a method for text-to-motion retrieval. Given a gallery of 3D human motions (which can be unseen during training) and a text query, the goal is to search for motions which are close to the text query.
+</p>
+
+"""
+
 EXAMPLES = [
+    "A person is walking slowly",
     "A person is walking in a circle",
     "A person is jumping rope",
     "Someone is doing a backflip",
@@ -27,24 +61,38 @@ EXAMPLES = [
     "A person is taking the stairs",
     "Someone is doing jumping jacks",
     "The person walked forward and is picking up his toolbox",
-    "The person angrily punching the air."
+    "The person angrily punching the air"
 ]
 
 # Show closest text in the training
 
 
 # css to make videos look nice
+# var(--block-border-color);
 CSS = """
 video {
     position: relative;
     margin: 0;
     box-shadow: var(--block-shadow);
     border-width: var(--block-border-width);
-    border-color: var(--block-border-color);
+    border-color: #000000;
     border-radius: var(--block-radius);
     background: var(--block-background-fill);
     width: 100%;
     line-height: var(--line-sm);
+}
+
+.contour_video {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: var(--layer-5);
+    border-radius: var(--block-radius);
+    background: var(--background-fill-primary);
+    padding: 0 var(--size-6);
+    max-height: var(--size-screen-h);
+    overflow: hidden;
 }
 """
 
@@ -82,7 +130,8 @@ def humanml3d_keyid_to_babel_rendered_url(h3d_index, amass_to_babel, keyid):
         "end": end,
         "text": text,
         "keyid": keyid,
-        "babel_id": babel_id
+        "babel_id": babel_id,
+        "path": path
     }
 
     return data
@@ -112,21 +161,33 @@ def retrieve(model, keyid_to_url, all_unit_motion_embs, all_keyids, text, splits
 
 
 # HTML component
-def get_video_html(url, video_id, start=None, end=None, score=None, width=350, height=350):
-    trim = ""
-    if start is not None:
-        if end is not None:
-            trim = f"#t={start},{end}"
-        else:
-            trim = f"#t={start}"
+def get_video_html(data, video_id, width=700, height=700):
+    url = data["url"]
+    start = data["start"]
+    end = data["end"]
+    score = data["score"]
+    text = data["text"]
+    keyid = data["keyid"]
+    babel_id = data["babel_id"]
+    path = data["path"]
 
-    score_t = ""
-    if score is not None:
-        score_t = f'title="Score = {score}"'
+    trim = f"#t={start},{end}"
+    title = f'''Score = {score}
 
+Corresponding text: {text}
+
+HumanML3D keyid: {keyid}
+
+BABEL keyid: {babel_id}
+
+AMASS path: {path}'''
+
+    # class="wrap default svelte-gjihhp hide"
+    # <div class="contour_video" style="position: absolute; padding: 10px;">
+    # width="{width}" height="{height}"
     video_html = f'''
-<video preload="auto" muted playsinline onpause="this.load()"
-autoplay loop disablepictureinpicture id="{video_id}" width="{width}" height="{height}" {score_t}>
+<video width="{width}" height="{height}" preload="auto" muted playsinline onpause="this.load()"
+autoplay loop disablepictureinpicture id="{video_id}" title="{title}">
   <source src="{url}{trim}" type="video/mp4">
   Your browser does not support the video tag.
 </video>
@@ -134,132 +195,134 @@ autoplay loop disablepictureinpicture id="{video_id}" width="{width}" height="{h
     return video_html
 
 
-def retrive_component(retrieve_function, text, splits, nvids, n_component=16):
+def retrieve_component(retrieve_function, text, splits_choice, nvids, n_component=32):
     # cannot produce more than n_compoenent
     nvids = min(nvids, n_component)
-    if not splits:
-        return [None for _ in range(n_component)]
 
-    splits_l = [x.lower() for x in splits]
-    datas = retrieve_function(text, splits=splits_l, nmax=nvids)
-    htmls = [
-        get_video_html(
-            url["url"], idx, start=url["start"],
-            end=url["end"], score=url["score"]
-        )
-        for idx, url in enumerate(datas)
-    ]
+    if "Unseen" in splits_choice:
+        splits = ["test"]
+    else:
+        splits = ["train", "val", "test"]
+
+    datas = retrieve_function(text, splits=splits, nmax=nvids)
+    htmls = [get_video_html(data, idx) for idx, data in enumerate(datas)]
     # get n_component exactly if asked less
     # pad with dummy blocks
     htmls = htmls + [None for _ in range(max(0, n_component-nvids))]
     return htmls
 
 
-def main():
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # LOADING
-    model = load_model(device)
-    splits = ["train", "val", "test"]
-    all_unit_motion_embs = load_unit_motion_embs_splits(splits, device)
-    all_keyids = load_keyids_splits(splits)
+if not os.path.exists("data"):
+    gdown.download_folder("https://drive.google.com/drive/folders/1MgPFgHZ28AMd01M1tJ7YW_1-ut3-4j08",
+                          use_cookies=False)
 
-    h3d_index = load_json("amass-annotations/humanml3d.json")
-    amass_to_babel = load_json("amass-annotations/amass_to_babel.json")
 
-    keyid_to_url = partial(humanml3d_keyid_to_babel_rendered_url, h3d_index, amass_to_babel)
-    retrieve_function = partial(retrieve, model, keyid_to_url, all_unit_motion_embs, all_keyids)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # DEMO
-    theme = gr.themes.Default(primary_hue="blue", secondary_hue="gray")
-    retrive_and_show = partial(retrive_component, retrieve_function)
+# LOADING
+model = load_model(device)
+splits = ["train", "val", "test"]
+all_unit_motion_embs = load_unit_motion_embs_splits(splits, device)
+all_keyids = load_keyids_splits(splits)
 
-    default_text = "A person is "
+h3d_index = load_json("amass-annotations/humanml3d.json")
+amass_to_babel = load_json("amass-annotations/amass_to_babel.json")
 
-    with gr.Blocks(css=CSS, theme=theme) as demo:
-        title = "<h1 style='text-align: center'>TMR: Text-to-Motion Retrieval Using Contrastive 3D Human Motion Synthesis </h1>"
-        gr.Markdown(title)
+keyid_to_url = partial(humanml3d_keyid_to_babel_rendered_url, h3d_index, amass_to_babel)
+retrieve_function = partial(retrieve, model, keyid_to_url, all_unit_motion_embs, all_keyids)
 
-        authors = """
-        <h2 style='text-align: center'>
-        <a href="https://mathis.petrovich.fr" target="_blank"><nobr>Mathis Petrovich</nobr></a> &emsp;
-        <a href="https://ps.is.mpg.de/~black" target="_blank"><nobr>Michael J. Black</nobr></a> &emsp;
-	<a href="https://imagine.enpc.fr/~varolg" target="_blank"><nobr>G&uumll Varol</nobr></a>
-	</h2>
-        """
-        gr.Markdown(authors)
+# DEMO
+theme = gr.themes.Default(primary_hue="blue", secondary_hue="gray")
+retrieve_and_show = partial(retrieve_component, retrieve_function)
 
-        conf = """
-        <h2 style='text-align: center'>
-	<nobr>arXiv 2023</nobr>
-	</h2>
-        """
-        gr.Markdown(conf)
+default_text = "A person is "
 
-        videos = []
+with gr.Blocks(css=CSS, theme=theme) as demo:
+    gr.Markdown(WEBSITE)
+    videos = []
 
-        with gr.Row():
-            with gr.Column(scale=3):
-                with gr.Column(scale=2):
-                    text = gr.Textbox(placeholder="Type in natural language, the motion to retrieve",
-                                      show_label=True, label="Text prompt", value=default_text)
-                with gr.Column(scale=1):
-                    btn = gr.Button("Retrieve", variant='primary')
-                    clear = gr.Button("Clear", variant='secondary')
-
-                with gr.Row():
-                    with gr.Column(scale=1):
-                        splits = gr.Dropdown(["Train", "Val", "Test"],
-                                             value=["Test"], multiselect=True, label="Splits",
-                                             info="HumanML3D data used for the motion database")
-                    with gr.Column(scale=1):
-                        nvideo_slider = gr.Slider(minimum=4, maximum=16, step=4, value=8, label="Number of videos")
+    with gr.Row():
+        with gr.Column(scale=3):
             with gr.Column(scale=2):
-                examples = gr.Examples(examples=EXAMPLES, inputs=text, examples_per_page=15)
+                text = gr.Textbox(placeholder="Type the motion you want to search with a sentence",
+                                  show_label=True, label="Text prompt", value=default_text)
+            with gr.Column(scale=1):
+                btn = gr.Button("Retrieve", variant='primary')
+                clear = gr.Button("Clear", variant='secondary')
 
-        i = -1
-        # should indent
-        for _ in range(4):
             with gr.Row():
-                for _ in range(4):
-                    i += 1
-                    with gr.Column():
-                        video = gr.HTML()
-                        videos.append(video)
+                with gr.Column(scale=1):
+                    # splits = gr.Dropdown(["Train", "Val", "Test"],
+                    #                      value=["Test"], multiselect=True, label="Splits",
+                    #                      info="HumanML3D data used for the motion database")
+                    splits_choice = gr.Radio(["Unseen motions", "All motions"], label="Gallery of motion",
+                                             value="Unseen motions",
+                                             info="The motion gallery is coming from HumanML3D")
 
-        def check_error(splits):
-            if not splits:
-                raise gr.Error("At least one split should be selected!")
-            return splits
+                with gr.Column(scale=1):
+                    # nvideo_slider = gr.Slider(minimum=4, maximum=32, step=4, value=8, label="Number of videos")
+                    nvideo_slider = gr.Radio([4, 8, 12, 16, 24, 28], label="Videos",
+                                             value=8,
+                                             info="Number of videos to display")
 
-        btn.click(fn=retrive_and_show, inputs=[text, splits, nvideo_slider], outputs=videos).then(
-            fn=check_error, inputs=splits
+        with gr.Column(scale=2):
+            def retrieve_example(text, splits_choice, nvideo_slider):
+                return retrieve_and_show(text, splits_choice, nvideo_slider)
+
+            examples = gr.Examples(examples=[[x, None, None] for x in EXAMPLES],
+                                   inputs=[text, splits_choice, nvideo_slider],
+                                   examples_per_page=20,
+                                   run_on_click=False, cache_examples=False,
+                                   fn=retrieve_example, outputs=[])
+
+    i = -1
+    # should indent
+    for _ in range(8):
+        with gr.Row():
+            for _ in range(4):
+                i += 1
+                video = gr.HTML()
+                videos.append(video)
+
+    # connect the examples to the output
+    # a bit hacky
+    examples.outputs = videos
+
+    def load_example(example_id):
+        processed_example = examples.non_none_processed_examples[example_id]
+        return gr.utils.resolve_singleton(processed_example)
+
+    examples.dataset.click(
+        load_example,
+        inputs=[examples.dataset],
+        outputs=examples.inputs_with_examples,  # type: ignore
+        show_progress=False,
+        postprocess=False,
+        queue=False,
+        ).then(
+            fn=retrieve_example,
+            inputs=examples.inputs,
+            outputs=videos
         )
+    # def check_error(splits):
+    # if not splits:
+    # raise gr.Error("At least one split should be selected!")
+    # return splits
 
-        text.submit(fn=retrive_and_show, inputs=[text, splits, nvideo_slider], outputs=videos).then(
-            fn=check_error, inputs=splits
-        )
+    btn.click(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
+    #.then(
+    # fn=check_error, inputs=splits
+    # )
 
-        def keep_test(splits):
-            if len(splits) == 0:
-                return ["Test"]
-            return splits
+    text.submit(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
+    # .then(
+    # fn=check_error, inputs=splits
+    # )
 
-        def clear_videos():
-            return [None for x in range(16)] + [default_text]
+    def clear_videos():
+        return [None for x in range(32)] + [default_text]
 
-        clear.click(fn=clear_videos, outputs=videos + [text])
-    demo.launch()
+    clear.click(fn=clear_videos, outputs=videos + [text])
 
-
-def prepare():
-    if not os.path.exists("data"):
-        gdown.download_folder("https://drive.google.com/drive/folders/1MgPFgHZ28AMd01M1tJ7YW_1-ut3-4j08", use_cookies=False)
-
-
-if __name__ == "__main__":
-    prepare()
-    main()
-
-# new
-# A person is walking slowly
+demo.launch()
