@@ -11,6 +11,7 @@ from load import load_unit_motion_embs_splits, load_keyids_splits
 
 
 WEBSITE = """
+<div class="embed_hidden">
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous">
 <link href="https://mathis.petrovich.fr/tmr/css/style.css" rel="stylesheet">
@@ -40,7 +41,7 @@ WEBSITE = """
 <p>
 This space illustrates <a href='https://mathis.petrovich.fr/tmr/' target='_blank'><b>TMR</b></a>, a method for text-to-motion retrieval. Given a gallery of 3D human motions (which can be unseen during training) and a text query, the goal is to search for motions which are close to the text query.
 </p>
-
+</div>
 """
 
 EXAMPLES = [
