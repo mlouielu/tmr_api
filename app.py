@@ -92,6 +92,8 @@ video {
 """
 
 
+DEFAULT_TEXT = "A person is "
+
 def humanml3d_keyid_to_babel_rendered_url(h3d_index, amass_to_babel, keyid):
     # Don't show the mirrored version of HumanMl3D
     if "M" in keyid:
@@ -191,6 +193,9 @@ autoplay loop disablepictureinpicture id="{video_id}" title="{title}">
 
 
 def retrieve_component(retrieve_function, text, splits_choice, nvids, n_component=24):
+    if text == DEFAULT_TEXT or text == "" or text is None:
+        return [None for _ in range(n_component)]
+
     # cannot produce more than n_compoenent
     nvids = min(nvids, n_component)
 
@@ -205,7 +210,6 @@ def retrieve_component(retrieve_function, text, splits_choice, nvids, n_componen
     # pad with dummy blocks
     htmls = htmls + [None for _ in range(max(0, n_component-nvids))]
     return htmls
-
 
 
 if not os.path.exists("data"):
@@ -231,8 +235,6 @@ retrieve_function = partial(retrieve, model, keyid_to_url, all_unit_motion_embs,
 theme = gr.themes.Default(primary_hue="blue", secondary_hue="gray")
 retrieve_and_show = partial(retrieve_component, retrieve_function)
 
-default_text = "A person is "
-
 with gr.Blocks(css=CSS, theme=theme) as demo:
     gr.Markdown(WEBSITE)
     videos = []
@@ -241,18 +243,15 @@ with gr.Blocks(css=CSS, theme=theme) as demo:
         with gr.Column(scale=3):
             with gr.Column(scale=2):
                 text = gr.Textbox(placeholder="Type the motion you want to search with a sentence",
-                                  show_label=True, label="Text prompt", value=default_text)
+                                  show_label=True, label="Text prompt", value=DEFAULT_TEXT)
             with gr.Column(scale=1):
                 btn = gr.Button("Retrieve", variant='primary')
                 clear = gr.Button("Clear", variant='secondary')
 
             with gr.Row():
                 with gr.Column(scale=1):
-                    # splits = gr.Dropdown(["Train", "Val", "Test"],
-                    #                      value=["Test"], multiselect=True, label="Splits",
-                    #                      info="HumanML3D data used for the motion database")
-                    splits_choice = gr.Radio(["Unseen motions", "All motions"], label="Gallery of motion",
-                                             value="Unseen motions",
+                    splits_choice = gr.Radio(["All motions", "Unseen motions"], label="Gallery of motion",
+                                             value="All motions",
                                              info="The motion gallery is coming from HumanML3D")
 
                 with gr.Column(scale=1):
@@ -300,23 +299,14 @@ with gr.Blocks(css=CSS, theme=theme) as demo:
             inputs=examples.inputs,
             outputs=videos
         )
-    # def check_error(splits):
-    # if not splits:
-    # raise gr.Error("At least one split should be selected!")
-    # return splits
 
     btn.click(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
-    #.then(
-    # fn=check_error, inputs=splits
-    # )
-
     text.submit(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
-    # .then(
-    # fn=check_error, inputs=splits
-    # )
+    splits_choice.change(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
+    nvideo_slider.change(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
 
     def clear_videos():
-        return [None for x in range(24)] + [default_text]
+        return [None for x in range(24)] + [DEFAULT_TEXT]
 
     clear.click(fn=clear_videos, outputs=videos + [text])
 
