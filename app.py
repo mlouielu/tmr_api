@@ -196,7 +196,7 @@ autoplay loop disablepictureinpicture id="{video_id}" title="{title}">
     return video_html
 
 
-def retrieve_component(retrieve_function, text, splits_choice, nvids, n_component=32):
+def retrieve_component(retrieve_function, text, splits_choice, nvids, n_component=24):
     # cannot produce more than n_compoenent
     nvids = min(nvids, n_component)
 
@@ -262,8 +262,8 @@ with gr.Blocks(css=CSS, theme=theme) as demo:
                                              info="The motion gallery is coming from HumanML3D")
 
                 with gr.Column(scale=1):
-                    # nvideo_slider = gr.Slider(minimum=4, maximum=32, step=4, value=8, label="Number of videos")
-                    nvideo_slider = gr.Radio([4, 8, 12, 16, 24, 28], label="Videos",
+                    # nvideo_slider = gr.Slider(minimum=4, maximum=24, step=4, value=8, label="Number of videos")
+                    nvideo_slider = gr.Radio([4, 8, 12, 16, 24], label="Videos",
                                              value=8,
                                              info="Number of videos to display")
 
@@ -279,7 +279,7 @@ with gr.Blocks(css=CSS, theme=theme) as demo:
 
     i = -1
     # should indent
-    for _ in range(8):
+    for _ in range(6):
         with gr.Row():
             for _ in range(4):
                 i += 1
@@ -322,7 +322,7 @@ with gr.Blocks(css=CSS, theme=theme) as demo:
     # )
 
     def clear_videos():
-        return [None for x in range(32)] + [default_text]
+        return [None for x in range(24)] + [default_text]
 
     clear.click(fn=clear_videos, outputs=videos + [text])
 
