@@ -65,7 +65,7 @@ EXAMPLES = [
 # css to make videos look nice
 # var(--block-border-color);
 CSS = """
-video {
+.retrieved_video {
     position: relative;
     margin: 0;
     box-shadow: var(--block-shadow);
@@ -183,7 +183,7 @@ AMASS path: {path}'''
     # <div class="contour_video" style="position: absolute; padding: 10px;">
     # width="{width}" height="{height}"
     video_html = f'''
-<video width="{width}" height="{height}" preload="auto" muted playsinline onpause="this.load()"
+<video class="retrieved_video" width="{width}" height="{height}" preload="auto" muted playsinline onpause="this.load()"
 autoplay loop disablepictureinpicture id="{video_id}" title="{title}">
   <source src="{url}{trim}" type="video/mp4">
   Your browser does not support the video tag.
