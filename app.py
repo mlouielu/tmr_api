@@ -25,7 +25,7 @@ WEBSITE = """
 </h2>
 
 <h3 style="text-align:center;">
-<a target="_blank" href="https://arxiv.org/abs/XXXX.XXXXX"> <button type="button" class="btn btn-primary btn-lg"> Paper </button></a>
+<a target="_blank" href="https://arxiv.org/abs/2305.00976"> <button type="button" class="btn btn-primary btn-lg"> Paper </button></a>
 <a target="_blank" href="https://github.com/Mathux/TMR"> <button type="button" class="btn btn-primary btn-lg"> Code </button></a>
 <a target="_blank" href="https://mathis.petrovich.fr/tmr"> <button type="button" class="btn btn-primary btn-lg"> Webpage </button></a>
 <a target="_blank" href="https://mathis.petrovich.fr/tmr/tmr.bib"> <button type="button" class="btn btn-primary btn-lg"> BibTex </button></a>
