@@ -56,7 +56,7 @@ EXAMPLES = [
     "A person is taking the stairs",
     "Someone is doing jumping jacks",
     "The person walked forward and is picking up his toolbox",
-    "The person angrily punching the air"
+    "The person angrily punching the air",
 ]
 
 # Show closest text in the training
@@ -94,6 +94,7 @@ CSS = """
 
 DEFAULT_TEXT = "A person is "
 
+
 def humanml3d_keyid_to_babel_rendered_url(h3d_index, amass_to_babel, keyid):
     # Don't show the mirrored version of HumanMl3D
     if "M" in keyid:
@@ -128,13 +129,15 @@ def humanml3d_keyid_to_babel_rendered_url(h3d_index, amass_to_babel, keyid):
         "text": text,
         "keyid": keyid,
         "babel_id": babel_id,
-        "path": path
+        "path": path,
     }
 
     return data
 
 
-def retrieve(model, keyid_to_url, all_unit_motion_embs, all_keyids, text, splits=["test"], nmax=8):
+def retrieve(
+    model, keyid_to_url, all_unit_motion_embs, all_keyids, text, splits=["test"], nmax=8
+):
     unit_motion_embs = torch.cat([all_unit_motion_embs[s] for s in splits])
     keyids = np.concatenate([all_keyids[s] for s in splits])
 
@@ -169,7 +172,7 @@ def get_video_html(data, video_id, width=700, height=700):
     path = data["path"]
 
     trim = f"#t={start},{end}"
-    title = f'''Score = {score}
+    title = f"""Score = {score}
 
 Corresponding text: {text}
 
@@ -177,18 +180,18 @@ HumanML3D keyid: {keyid}
 
 BABEL keyid: {babel_id}
 
-AMASS path: {path}'''
+AMASS path: {path}"""
 
     # class="wrap default svelte-gjihhp hide"
     # <div class="contour_video" style="position: absolute; padding: 10px;">
     # width="{width}" height="{height}"
-    video_html = f'''
+    video_html = f"""
 <video class="retrieved_video" width="{width}" height="{height}" preload="auto" muted playsinline onpause="this.load()"
 autoplay loop disablepictureinpicture id="{video_id}" title="{title}">
   <source src="{url}{trim}" type="video/mp4">
   Your browser does not support the video tag.
 </video>
-'''
+"""
     return video_html
 
 
@@ -208,16 +211,18 @@ def retrieve_component(retrieve_function, text, splits_choice, nvids, n_componen
     htmls = [get_video_html(data, idx) for idx, data in enumerate(datas)]
     # get n_component exactly if asked less
     # pad with dummy blocks
-    htmls = htmls + [None for _ in range(max(0, n_component-nvids))]
+    htmls = htmls + [None for _ in range(max(0, n_component - nvids))]
     return htmls
 
 
 if not os.path.exists("data"):
-    gdown.download_folder("https://drive.google.com/drive/folders/1MgPFgHZ28AMd01M1tJ7YW_1-ut3-4j08",
-                          use_cookies=False)
+    gdown.download_folder(
+        "https://drive.google.com/drive/folders/1MgPFgHZ28AMd01M1tJ7YW_1-ut3-4j08",
+        use_cookies=False,
+    )
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # LOADING
 model = load_model(device)
@@ -229,7 +234,9 @@ h3d_index = load_json("amass-annotations/humanml3d.json")
 amass_to_babel = load_json("amass-annotations/amass_to_babel.json")
 
 keyid_to_url = partial(humanml3d_keyid_to_babel_rendered_url, h3d_index, amass_to_babel)
-retrieve_function = partial(retrieve, model, keyid_to_url, all_unit_motion_embs, all_keyids)
+retrieve_function = partial(
+    retrieve, model, keyid_to_url, all_unit_motion_embs, all_keyids
+)
 
 # DEMO
 theme = gr.themes.Default(primary_hue="blue", secondary_hue="gray")
@@ -242,33 +249,48 @@ with gr.Blocks(css=CSS, theme=theme) as demo:
     with gr.Row():
         with gr.Column(scale=3):
             with gr.Column(scale=2):
-                text = gr.Textbox(placeholder="Type the motion you want to search with a sentence",
-                                  show_label=True, label="Text prompt", value=DEFAULT_TEXT)
+                text = gr.Textbox(
+                    placeholder="Type the motion you want to search with a sentence",
+                    show_label=True,
+                    label="Text prompt",
+                    value=DEFAULT_TEXT,
+                )
             with gr.Column(scale=1):
-                btn = gr.Button("Retrieve", variant='primary')
-                clear = gr.Button("Clear", variant='secondary')
+                btn = gr.Button("Retrieve", variant="primary")
+                clear = gr.Button("Clear", variant="secondary")
 
             with gr.Row():
                 with gr.Column(scale=1):
-                    splits_choice = gr.Radio(["All motions", "Unseen motions"], label="Gallery of motion",
-                                             value="All motions",
-                                             info="The motion gallery is coming from HumanML3D")
+                    splits_choice = gr.Radio(
+                        ["All motions", "Unseen motions"],
+                        label="Gallery of motion",
+                        value="All motions",
+                        info="The motion gallery is coming from HumanML3D",
+                    )
 
                 with gr.Column(scale=1):
                     # nvideo_slider = gr.Slider(minimum=4, maximum=24, step=4, value=8, label="Number of videos")
-                    nvideo_slider = gr.Radio([4, 8, 12, 16, 24], label="Videos",
-                                             value=8,
-                                             info="Number of videos to display")
+                    nvideo_slider = gr.Radio(
+                        [4, 8, 12, 16, 24],
+                        label="Videos",
+                        value=8,
+                        info="Number of videos to display",
+                    )
 
         with gr.Column(scale=2):
+
             def retrieve_example(text, splits_choice, nvideo_slider):
                 return retrieve_and_show(text, splits_choice, nvideo_slider)
 
-            examples = gr.Examples(examples=[[x, None, None] for x in EXAMPLES],
-                                   inputs=[text, splits_choice, nvideo_slider],
-                                   examples_per_page=20,
-                                   run_on_click=False, cache_examples=False,
-                                   fn=retrieve_example, outputs=[])
+            examples = gr.Examples(
+                examples=[[x, None, None] for x in EXAMPLES],
+                inputs=[text, splits_choice, nvideo_slider],
+                examples_per_page=20,
+                run_on_click=False,
+                cache_examples=False,
+                fn=retrieve_example,
+                outputs=[],
+            )
 
     i = -1
     # should indent
@@ -294,16 +316,28 @@ with gr.Blocks(css=CSS, theme=theme) as demo:
         show_progress=False,
         postprocess=False,
         queue=False,
-        ).then(
-            fn=retrieve_example,
-            inputs=examples.inputs,
-            outputs=videos
-        )
+    ).then(fn=retrieve_example, inputs=examples.inputs, outputs=videos)
 
-    btn.click(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
-    text.submit(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
-    splits_choice.change(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
-    nvideo_slider.change(fn=retrieve_and_show, inputs=[text, splits_choice, nvideo_slider], outputs=videos)
+    btn.click(
+        fn=retrieve_and_show,
+        inputs=[text, splits_choice, nvideo_slider],
+        outputs=videos,
+    )
+    text.submit(
+        fn=retrieve_and_show,
+        inputs=[text, splits_choice, nvideo_slider],
+        outputs=videos,
+    )
+    splits_choice.change(
+        fn=retrieve_and_show,
+        inputs=[text, splits_choice, nvideo_slider],
+        outputs=videos,
+    )
+    nvideo_slider.change(
+        fn=retrieve_and_show,
+        inputs=[text, splits_choice, nvideo_slider],
+        outputs=videos,
+    )
 
     def clear_videos():
         return [None for x in range(24)] + [DEFAULT_TEXT]

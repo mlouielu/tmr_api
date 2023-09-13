@@ -20,10 +20,7 @@ def load_keyids(split):
 
 
 def load_keyids_splits(splits):
-    return {
-        split: load_keyids(split)
-        for split in splits
-    }
+    return {split: load_keyids(split) for split in splits}
 
 
 def load_unit_motion_embs(split, device):
@@ -33,16 +30,17 @@ def load_unit_motion_embs(split, device):
 
 
 def load_unit_motion_embs_splits(splits, device):
-    return {
-        split: load_unit_motion_embs(split, device)
-        for split in splits
-    }
+    return {split: load_unit_motion_embs(split, device) for split in splits}
 
 
 def load_model(device):
     text_params = {
-        'latent_dim': 256, 'ff_size': 1024, 'num_layers': 6, 'num_heads': 4,
-        'activation': 'gelu', 'modelpath': 'distilbert-base-uncased'
+        "latent_dim": 256,
+        "ff_size": 1024,
+        "num_layers": 6,
+        "num_heads": 4,
+        "activation": "gelu",
+        "modelpath": "distilbert-base-uncased",
     }
     "unit_motion_embs"
     model = TMR_textencoder(**text_params)
@@ -50,4 +48,4 @@ def load_model(device):
     # load values for the transformer only
     model.load_state_dict(state_dict, strict=False)
     model = model.eval()
-    return model
+    return model.to(device)
