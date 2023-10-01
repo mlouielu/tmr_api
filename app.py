@@ -21,7 +21,7 @@ WEBSITE = """
 </h2>
 
 <h2 style='text-align: center'>
-<nobr>arXiv 2023</nobr>
+<nobr>ICCV 2023</nobr>
 </h2>
 
 <h3 style="text-align:center;">
