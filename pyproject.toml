@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "chumpy",
     "gdown>=5.2.1",
     "gradio>=6.5.1",
     "numpy>=2.4.2",
@@ -12,3 +13,14 @@ dependencies = [
     "torch>=2.10.0",
     "transformers>=5.0.0",
 ]
+
+[dependency-groups]
+smpl = [
+    "chumpy",
+    "scipy>=1.17.0",
+    "smplx>=0.1.28",
+    "trimesh>=4.11.1",
+]
+
+[tool.uv.sources]
+chumpy = { git = "https://github.com/mlouielu/chumpy.git", rev = "pep517" }
