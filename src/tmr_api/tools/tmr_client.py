@@ -2,7 +2,7 @@ from gradio_client import Client
 import os
 import json
 import argparse
-from mesh_generator import SMPLGenerator
+from .mesh_generator import SMPLGenerator
 
 
 def find_amass_file(amass_root, rel_path):
