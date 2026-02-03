@@ -215,7 +215,8 @@ def retrieve_component(retrieve_function, text, splits_choice, nvids, n_componen
     return htmls
 
 
-if not os.path.exists("data"):
+DATA_DIR = os.getenv("TMR_DATA_DIR", "tmr_data")
+if not os.path.exists(DATA_DIR):
     gdown.download_folder(
         "https://drive.google.com/drive/folders/1MgPFgHZ28AMd01M1tJ7YW_1-ut3-4j08",
         use_cookies=False,

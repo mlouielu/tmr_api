@@ -4,7 +4,8 @@ import torch
 import numpy as np
 from .model import TMR_textencoder
 
-EMBS = "data/unit_motion_embs"
+DATA_DIR = os.getenv("TMR_DATA_DIR", "tmr_data")
+EMBS = os.path.join(DATA_DIR, "unit_motion_embs")
 
 
 def load_json(path):
@@ -44,7 +45,7 @@ def load_model(device):
     }
     "unit_motion_embs"
     model = TMR_textencoder(**text_params)
-    state_dict = torch.load("data/textencoder.pt", map_location=device)
+    state_dict = torch.load(os.path.join(DATA_DIR, "textencoder.pt"), map_location=device)
     # load values for the transformer only
     model.load_state_dict(state_dict, strict=False)
     model = model.eval()
