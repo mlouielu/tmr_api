@@ -262,7 +262,9 @@ def predict(query, gallery, videos):
             "HumanML3D keyid": data["keyid"],
             "BABEL keyid": data["babel_id"],
             "AMASS path": data["path"],
-            "video link": f"{data['url']}#t={data['start']},{data['end']}"
+            "video link": f"{data['url']}#t={data['start']},{data['end']}",
+            "start_time": data["start"],
+            "end_time": data["end"]
         })
     return results
 
