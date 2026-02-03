@@ -104,25 +104,70 @@ def main():
         default=1,
         help="Limit number of meshes to generate for validation (default: 1)",
     )
+    parser.add_argument(
+        "--remote",
+        nargs='?',
+        const="http://127.0.0.1:7860/",
+        help="Use remote API server (default: http://127.0.0.1:7860/ if flag is present without value)",
+    )
     args = parser.parse_args()
 
-    # 1. Initialize API Client
-    client_url = "http://127.0.0.1:7860/"
-    print(f"Connecting to API at {client_url}...")
-    client = Client(client_url)
+    if not args.remote:
+        print("Running in LOCAL mode...")
+        # Import core logic here to avoid dependency if not used
+        try:
+            # Assumes running as module: python -m tmr_api.tools.tmr_client
+            from ..search import TMRSearcher
+        except ImportError:
+            try:
+                # Fallback if PYTHONPATH is set correctly to src/
+                from tmr_api.search import TMRSearcher
+            except ImportError:
+                print("Error: Could not import TMRSearcher. Ensure you are running as a module or have installed the package.")
+                return
 
-    # 2. Get Predictions
-    print(f"Searching for: '{args.query}'")
-    result = client.predict(
-        query=args.query, gallery="All motions", videos=args.videos, api_name="/predict"
-    )
-
-    # Handle result format (if it's a file path string or direct JSON object)
-    if isinstance(result, str) and os.path.exists(result):
-        with open(result, "r") as f:
-            data = json.load(f)
+        print("Initializing TMR Model (this may take a few seconds)...")
+        searcher = TMRSearcher()
+        
+        split_mode = "all" # Default to all motions
+        print(f"Searching for: '{args.query}' (Local)")
+        
+        # Local search
+        results = searcher.search(args.query, split_mode=split_mode, nmax=args.videos)
+        
+        data = []
+        for res in results:
+            data.append({
+                "score": res["score"],
+                "corresponding text": res["text"],
+                "AMASS path": res["path"],
+                "start_time": res["start"],
+                "end_time": res["end"],
+                "fps": res["fps"]
+            })
+            
     else:
-        data = result
+        # 1. Initialize API Client
+        client_url = args.remote
+        print(f"Connecting to API at {client_url}...")
+        client = Client(client_url)
+
+        # 2. Get Predictions
+        print(f"Searching for: '{args.query}'")
+        result = client.predict(
+            query=args.query, gallery="All motions", videos=args.videos, api_name="/predict"
+        )
+
+        # Handle result format (if it's a file path string or direct JSON object)
+        if isinstance(result, str) and os.path.exists(result):
+            with open(result, "r") as f:
+                data = json.load(f)
+        else:
+            data = result
+
+    if not data:
+        print("No results found.")
+        return
 
     if not data:
         print("No results found.")
