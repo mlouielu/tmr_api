@@ -230,8 +230,12 @@ splits = ["train", "val", "test"]
 all_unit_motion_embs = load_unit_motion_embs_splits(splits, device)
 all_keyids = load_keyids_splits(splits)
 
-h3d_index = load_json("amass-annotations/humanml3d.json")
-amass_to_babel = load_json("amass-annotations/amass_to_babel.json")
+# Resolve paths relative to this file
+MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+ANNOTATIONS_DIR = os.path.join(MODULE_DIR, "annotations")
+
+h3d_index = load_json(os.path.join(ANNOTATIONS_DIR, "humanml3d.json"))
+amass_to_babel = load_json(os.path.join(ANNOTATIONS_DIR, "amass_to_babel.json"))
 
 keyid_to_url = partial(humanml3d_keyid_to_babel_rendered_url, h3d_index, amass_to_babel)
 retrieve_function = partial(
