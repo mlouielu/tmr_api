@@ -110,6 +110,11 @@ def main():
         const="http://127.0.0.1:7860/",
         help="Use remote API server (default: http://127.0.0.1:7860/ if flag is present without value)",
     )
+    parser.add_argument(
+        "--dry_run",
+        action="store_true",
+        help="Perform search and display results without generating meshes",
+    )
     args = parser.parse_args()
 
     if not args.remote:
@@ -173,13 +178,14 @@ def main():
         print("No results found.")
         return
 
-    # 3. Initialize Mesh Generator (Loaded ONCE)
-    print("\nInitializing SMPL Generator...")
-    try:
-        generator = SMPLGenerator(smpl_model_path=args.smpl_path)
-    except Exception as e:
-        print(f"Failed to initialize SMPL Generator: {e}")
-        return
+    # 3. Initialize Mesh Generator (Loaded ONCE) - Only if not dry run
+    if not args.dry_run:
+        print("\nInitializing SMPL Generator...")
+        try:
+            generator = SMPLGenerator(smpl_model_path=args.smpl_path)
+        except Exception as e:
+            print(f"Failed to initialize SMPL Generator: {e}")
+            return
 
     os.makedirs(args.output_dir, exist_ok=True)
 
@@ -187,19 +193,31 @@ def main():
     items_to_process = data[: args.limit]
     print(f"\nProcessing {len(items_to_process)} results (Limit: {args.limit})...")
 
-    for i, item in enumerate(items_to_process):
-        print(
-            f"\n[{i+1}/{len(items_to_process)}] {item.get('corresponding text')} (Score: {item.get('score')})"
-        )
+    dataset_counts = {}
 
+    for i, item in enumerate(items_to_process):
         amass_rel_path = item.get("AMASS path")
+        score = item.get('score')
+        text = item.get('corresponding text')
+        
+        # Identify source dataset from path (e.g. "KIT/...", "CMU/...")
+        source_dataset = amass_rel_path.split('/')[0] if amass_rel_path else "Unknown"
+        dataset_counts[source_dataset] = dataset_counts.get(source_dataset, 0) + 1
+        
+        print(f"\n[{i+1}/{len(items_to_process)}] Score: {score} | Dataset: {source_dataset}")
+        print(f"  Text: {text}")
+        print(f"  Path: {amass_rel_path}")
+
+        if args.dry_run:
+            continue
+
         if not amass_rel_path:
             print("  No AMASS path in result.")
             continue
-
+            
         # Resolve full path using fuzzy matching
         full_amass_path = find_amass_file(args.amass_root, amass_rel_path)
-
+        
         if not full_amass_path:
             print(
                 f"  [Error] Could not find file for {amass_rel_path} in {args.amass_root}"
@@ -256,6 +274,19 @@ def main():
             print(f"  Saved metadata (Rank: {i+1}) to {metadata_path}")
         else:
             print(f"  [Error] Generation failed for {full_amass_path}")
+
+    # Print Summary
+    print("\n" + "="*30)
+    print("DATASET SUMMARY")
+    print("="*30)
+    if not dataset_counts:
+        print("No results found.")
+    else:
+        # Sort by count descending
+        sorted_counts = sorted(dataset_counts.items(), key=lambda x: x[1], reverse=True)
+        for ds, count in sorted_counts:
+            print(f"{ds}: {count}")
+    print("="*30 + "\n")
 
 
 if __name__ == "__main__":
