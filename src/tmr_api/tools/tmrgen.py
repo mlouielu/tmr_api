@@ -3,6 +3,7 @@ import os
 import json
 import argparse
 from .mesh_generator import SMPLGenerator
+from .video_utils import download_and_trim_video
 
 
 def find_amass_file(amass_root, rel_path):
@@ -105,8 +106,13 @@ def main():
         help="Limit number of meshes to generate for validation (default: 1)",
     )
     parser.add_argument(
+        "--save_video",
+        action="store_true",
+        help="Download and trim the reference video from BABEL (requires internet)",
+    )
+    parser.add_argument(
         "--remote",
-        nargs='?',
+        nargs="?",
         const="http://127.0.0.1:7860/",
         help="Use remote API server (default: http://127.0.0.1:7860/ if flag is present without value)",
     )
@@ -128,29 +134,34 @@ def main():
                 # Fallback if PYTHONPATH is set correctly to src/
                 from tmr_api.search import TMRSearcher
             except ImportError:
-                print("Error: Could not import TMRSearcher. Ensure you are running as a module or have installed the package.")
+                print(
+                    "Error: Could not import TMRSearcher. Ensure you are running as a module or have installed the package."
+                )
                 return
 
         print("Initializing TMR Model (this may take a few seconds)...")
         searcher = TMRSearcher()
-        
-        split_mode = "all" # Default to all motions
+
+        split_mode = "all"  # Default to all motions
         print(f"Searching for: '{args.query}' (Local)")
-        
+
         # Local search
         results = searcher.search(args.query, split_mode=split_mode, nmax=args.videos)
-        
+
         data = []
         for res in results:
-            data.append({
-                "score": res["score"],
-                "corresponding text": res["text"],
-                "AMASS path": res["path"],
-                "start_time": res["start"],
-                "end_time": res["end"],
-                "fps": res["fps"]
-            })
-            
+            data.append(
+                {
+                    "score": res["score"],
+                    "corresponding text": res["text"],
+                    "AMASS path": res["path"],
+                    "start_time": res["start"],
+                    "end_time": res["end"],
+                    "fps": res["fps"],
+                    "babel_id": res.get("babel_id"),
+                }
+            )
+
     else:
         # 1. Initialize API Client
         client_url = args.remote
@@ -160,7 +171,10 @@ def main():
         # 2. Get Predictions
         print(f"Searching for: '{args.query}'")
         result = client.predict(
-            query=args.query, gallery="All motions", videos=args.videos, api_name="/predict"
+            query=args.query,
+            gallery="All motions",
+            videos=args.videos,
+            api_name="/predict",
         )
 
         # Handle result format (if it's a file path string or direct JSON object)
@@ -197,14 +211,16 @@ def main():
 
     for i, item in enumerate(items_to_process):
         amass_rel_path = item.get("AMASS path")
-        score = item.get('score')
-        text = item.get('corresponding text')
-        
+        score = item.get("score")
+        text = item.get("corresponding text")
+
         # Identify source dataset from path (e.g. "KIT/...", "CMU/...")
-        source_dataset = amass_rel_path.split('/')[0] if amass_rel_path else "Unknown"
+        source_dataset = amass_rel_path.split("/")[0] if amass_rel_path else "Unknown"
         dataset_counts[source_dataset] = dataset_counts.get(source_dataset, 0) + 1
-        
-        print(f"\n[{i+1}/{len(items_to_process)}] Score: {score} | Dataset: {source_dataset}")
+
+        print(
+            f"\n[{i+1}/{len(items_to_process)}] Score: {score} | Dataset: {source_dataset}"
+        )
         print(f"  Text: {text}")
         print(f"  Path: {amass_rel_path}")
 
@@ -214,10 +230,10 @@ def main():
         if not amass_rel_path:
             print("  No AMASS path in result.")
             continue
-            
+
         # Resolve full path using fuzzy matching
         full_amass_path = find_amass_file(args.amass_root, amass_rel_path)
-        
+
         if not full_amass_path:
             print(
                 f"  [Error] Could not find file for {amass_rel_path} in {args.amass_root}"
@@ -239,6 +255,17 @@ def main():
         sequence_dir = os.path.join(args.output_dir, dir_name)
 
         os.makedirs(sequence_dir, exist_ok=True)
+
+        if args.save_video:
+            babel_id = item.get("BABEL keyid")
+            if babel_id:
+                video_filename = (
+                    f"reference_{babel_id}_{start_t:.2f}_to_{end_t:.2f}.mp4"
+                )
+                video_path = os.path.join(sequence_dir, video_filename)
+                download_and_trim_video(babel_id, start_t, end_t, video_path)
+            else:
+                print("  [Warning] No BABEL ID found, cannot save video.")
 
         print(f"  Generating sequence from {start_t}s to {end_t}s...")
 
@@ -276,9 +303,9 @@ def main():
             print(f"  [Error] Generation failed for {full_amass_path}")
 
     # Print Summary
-    print("\n" + "="*30)
+    print("\n" + "=" * 30)
     print("DATASET SUMMARY")
-    print("="*30)
+    print("=" * 30)
     if not dataset_counts:
         print("No results found.")
     else:
@@ -286,7 +313,7 @@ def main():
         sorted_counts = sorted(dataset_counts.items(), key=lambda x: x[1], reverse=True)
         for ds, count in sorted_counts:
             print(f"{ds}: {count}")
-    print("="*30 + "\n")
+    print("=" * 30 + "\n")
 
 
 if __name__ == "__main__":
