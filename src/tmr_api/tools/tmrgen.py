@@ -121,6 +121,12 @@ def main():
         action="store_true",
         help="Perform search and display results without generating meshes",
     )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=32,
+        help="Batch size for SMPL inference (default: 32)",
+    )
     args = parser.parse_args()
 
     if not args.remote:
@@ -271,7 +277,11 @@ def main():
 
         # Generate sequence using API-provided timings
         gen_result = generator.generate_sequence(
-            full_amass_path, sequence_dir, start_time=start_t, stop_time=end_t
+            full_amass_path,
+            sequence_dir,
+            start_time=start_t,
+            stop_time=end_t,
+            batch_size=args.batch_size,
         )
 
         if gen_result and gen_result.get("success"):
