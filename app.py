@@ -238,6 +238,35 @@ retrieve_function = partial(
     retrieve, model, keyid_to_url, all_unit_motion_embs, all_keyids
 )
 
+def predict(query, gallery, videos):
+    if query == DEFAULT_TEXT or query == "" or query is None:
+        return []
+
+    # Ensure videos is an integer
+    try:
+        nmax = int(videos)
+    except (ValueError, TypeError):
+        nmax = 8
+
+    if "Unseen" in gallery:
+        splits = ["test"]
+    else:
+        splits = ["train", "val", "test"]
+
+    datas = retrieve_function(query, splits=splits, nmax=nmax)
+    results = []
+    for data in datas:
+        results.append({
+            "score": data["score"],
+            "corresponding text": data["text"],
+            "HumanML3D keyid": data["keyid"],
+            "BABEL keyid": data["babel_id"],
+            "AMASS path": data["path"],
+            "video link": f"{data['url']}#t={data['start']},{data['end']}"
+        })
+    return results
+
+
 # DEMO
 theme = gr.themes.Default(primary_hue="blue", secondary_hue="gray")
 retrieve_and_show = partial(retrieve_component, retrieve_function)
@@ -337,6 +366,16 @@ with gr.Blocks(css=CSS, theme=theme) as demo:
         fn=retrieve_and_show,
         inputs=[text, splits_choice, nvideo_slider],
         outputs=videos,
+    )
+
+    # Add named API
+    api_videos_input = gr.Number(value=8, visible=False)
+    dummy_btn = gr.Button("Predict API", visible=False)
+    dummy_btn.click(
+        fn=predict,
+        inputs=[text, splits_choice, api_videos_input],
+        outputs=gr.JSON(),
+        api_name="predict",
     )
 
     def clear_videos():
