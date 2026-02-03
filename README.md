@@ -1,6 +1,8 @@
 # TMR API & Mesh Generator
 
-Derived from TMR: Text-to-Motion Retrieval Using Contrastive 3D Human Motion Synthesis demo: https://huggingface.co/spaces/Mathux/TMR. This project provides tools for text-to-motion retrieval and SMPL mesh generation. It includes a web API for interactive search and a CLI tool (`tmrgen`) for batch processing and mesh generation.
+Derived from [TMR: Text-to-Motion Retrieval Using Contrastive 3D Human Motion Synthesis](https://mathis.petrovich.fr/tmr/)' demo: https://huggingface.co/spaces/Mathux/TMR.
+
+This project provides tools for text-to-motion retrieval and SMPL mesh generation. It includes a web API for interactive search and a CLI tool (`tmrgen`) for batch processing and mesh generation.
 
 ## Prerequisites
 
