@@ -157,7 +157,7 @@ class SMPLGenerator:
             count += 1
         
         print(f"Generated {count} meshes in {output_dir}")
-        return True
+        return {"success": True, "fps": fps, "count": count}
 
 if __name__ == "__main__":
     import argparse
