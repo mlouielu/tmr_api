@@ -65,6 +65,9 @@ python -m src.tmr_api.tools.tmrgen [OPTIONS]
 - `--smpl_path`: Path to your SMPL models directory.
 - `--output_dir`: Directory to save results (default: `output_meshes`).
 - `--limit`: Number of top results to process.
+- `--videos`: How many result return.
+- `--dry_run`: Dry run without any action.
+- `--save_video`: Save trimmed babel video.
 - `--remote [URL]`: Enable remote mode. Optional URL (default: `http://127.0.0.1:7860/`).
 
 **Examples:**
