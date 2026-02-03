@@ -6,8 +6,8 @@ import numpy as np
 import gradio as gr
 import gdown
 
-from load import load_model, load_json
-from load import load_unit_motion_embs_splits, load_keyids_splits
+from .load import load_model, load_json
+from .load import load_unit_motion_embs_splits, load_keyids_splits
 
 
 WEBSITE = """
@@ -95,73 +95,26 @@ CSS = """
 DEFAULT_TEXT = "A person is "
 
 
-def humanml3d_keyid_to_babel_rendered_url(h3d_index, amass_to_babel, keyid):
-    # Don't show the mirrored version of HumanMl3D
-    if "M" in keyid:
-        return None
+import gradio as gr
+import gdown
+from .search import TMRSearcher
 
-    dico = h3d_index[keyid]
-    path = dico["path"]
+WEBSITE = """
+<div class="embed_hidden">
+<h1 style='text-align: center'>TMR: Text-to-Motion Retrieval Using Contrastive 3D Human Motion Synthesis </h1>
+... (rest of website string is unchanged, but I must provide context or ensure I don't delete it. I will try to match the context block better)
+"""
+# (I will skip re-declaring WEBSITE and EXAMPLES and CSS if I can match around them, but replacing the whole file content might be safer or large chunks)
 
-    # HumanAct12 motions are not rendered online
-    # so we skip them for now
-    if "humanact12" in path:
-        return None
+# ... (EXAMPLES, CSS, DEFAULT_TEXT are fine)
 
-    # This motion is not rendered in BABEL
-    # so we skip them for now
-    if path not in amass_to_babel:
-        return None
+# I will replace the logic part.
 
-    babel_id = amass_to_babel[path].zfill(6)
-    url = f"https://babel-renders.s3.eu-central-1.amazonaws.com/{babel_id}.mp4"
+def get_video_url(babel_id):
+    return f"https://babel-renders.s3.eu-central-1.amazonaws.com/{babel_id}.mp4"
 
-    # For the demo, we retrieve from the first annotation only
-    ann = dico["annotations"][0]
-    start = ann["start"]
-    end = ann["end"]
-    text = ann["text"]
-
-    data = {
-        "url": url,
-        "start": start,
-        "end": end,
-        "text": text,
-        "keyid": keyid,
-        "babel_id": babel_id,
-        "path": path,
-    }
-
-    return data
-
-
-def retrieve(
-    model, keyid_to_url, all_unit_motion_embs, all_keyids, text, splits=["test"], nmax=8
-):
-    unit_motion_embs = torch.cat([all_unit_motion_embs[s] for s in splits])
-    keyids = np.concatenate([all_keyids[s] for s in splits])
-
-    scores = model.compute_scores(text, unit_embs=unit_motion_embs)
-
-    sorted_idxs = np.argsort(-scores)
-    best_keyids = keyids[sorted_idxs]
-    best_scores = scores[sorted_idxs]
-
-    datas = []
-    for keyid, score in zip(best_keyids, best_scores):
-        if len(datas) == nmax:
-            break
-
-        data = keyid_to_url(keyid)
-        if data is None:
-            continue
-        data["score"] = round(float(score), 2)
-        datas.append(data)
-    return datas
-
-
-# HTML component
 def get_video_html(data, video_id, width=700, height=700):
+    # data now comes from searcher result + appended url
     url = data["url"]
     start = data["start"]
     end = data["end"]
@@ -182,9 +135,6 @@ BABEL keyid: {babel_id}
 
 AMASS path: {path}"""
 
-    # class="wrap default svelte-gjihhp hide"
-    # <div class="contour_video" style="position: absolute; padding: 10px;">
-    # width="{width}" height="{height}"
     video_html = f"""
 <video class="retrieved_video" width="{width}" height="{height}" preload="auto" muted playsinline onpause="this.load()"
 autoplay loop disablepictureinpicture id="{video_id}" title="{title}">
@@ -194,82 +144,70 @@ autoplay loop disablepictureinpicture id="{video_id}" title="{title}">
 """
     return video_html
 
-
-def retrieve_component(retrieve_function, text, splits_choice, nvids, n_component=24):
+def retrieve_component(searcher, text, splits_choice, nvids, n_component=24):
     if text == DEFAULT_TEXT or text == "" or text is None:
         return [None for _ in range(n_component)]
 
-    # cannot produce more than n_compoenent
     nvids = min(nvids, n_component)
+    split_mode = "unseen" if "Unseen" in splits_choice else "all"
 
-    if "Unseen" in splits_choice:
-        splits = ["test"]
-    else:
-        splits = ["train", "val", "test"]
+    results = searcher.search(text, split_mode=split_mode, nmax=nvids)
+    
+    # Add URLs for the UI
+    for res in results:
+        res["url"] = get_video_url(res["babel_id"])
 
-    datas = retrieve_function(text, splits=splits, nmax=nvids)
-    htmls = [get_video_html(data, idx) for idx, data in enumerate(datas)]
-    # get n_component exactly if asked less
-    # pad with dummy blocks
+    htmls = [get_video_html(data, idx) for idx, data in enumerate(results)]
     htmls = htmls + [None for _ in range(max(0, n_component - nvids))]
     return htmls
 
 
-if not os.path.exists("data"):
+DATA_DIR = os.getenv("TMR_DATA_DIR", "tmr_data")
+if not os.path.exists(DATA_DIR):
     gdown.download_folder(
         "https://drive.google.com/drive/folders/1MgPFgHZ28AMd01M1tJ7YW_1-ut3-4j08",
         use_cookies=False,
     )
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # LOADING
-model = load_model(device)
-splits = ["train", "val", "test"]
-all_unit_motion_embs = load_unit_motion_embs_splits(splits, device)
-all_keyids = load_keyids_splits(splits)
-
-h3d_index = load_json("amass-annotations/humanml3d.json")
-amass_to_babel = load_json("amass-annotations/amass_to_babel.json")
-
-keyid_to_url = partial(humanml3d_keyid_to_babel_rendered_url, h3d_index, amass_to_babel)
-retrieve_function = partial(
-    retrieve, model, keyid_to_url, all_unit_motion_embs, all_keyids
-)
+searcher = TMRSearcher(device=device)
 
 def predict(query, gallery, videos):
     if query == DEFAULT_TEXT or query == "" or query is None:
         return []
 
-    # Ensure videos is an integer
     try:
         nmax = int(videos)
     except (ValueError, TypeError):
         nmax = 8
 
-    if "Unseen" in gallery:
-        splits = ["test"]
-    else:
-        splits = ["train", "val", "test"]
-
-    datas = retrieve_function(query, splits=splits, nmax=nmax)
-    results = []
-    for data in datas:
-        results.append({
-            "score": data["score"],
-            "corresponding text": data["text"],
-            "HumanML3D keyid": data["keyid"],
-            "BABEL keyid": data["babel_id"],
-            "AMASS path": data["path"],
-            "video link": f"{data['url']}#t={data['start']},{data['end']}"
+    split_mode = "unseen" if "Unseen" in gallery else "all"
+    
+    results = searcher.search(query, split_mode=split_mode, nmax=nmax)
+    
+    # Format for API response
+    api_results = []
+    for res in results:
+        url = get_video_url(res["babel_id"])
+        api_results.append({
+            "score": res["score"],
+            "corresponding text": res["text"],
+            "HumanML3D keyid": res["keyid"],
+            "BABEL keyid": res["babel_id"],
+            "AMASS path": res["path"],
+            "video link": f"{url}#t={res['start']},{res['end']}",
+            "start_time": res["start"],
+            "end_time": res["end"],
+            "fps": res["fps"]
         })
-    return results
+    return api_results
 
 
 # DEMO
 theme = gr.themes.Default(primary_hue="blue", secondary_hue="gray")
-retrieve_and_show = partial(retrieve_component, retrieve_function)
+retrieve_and_show = partial(retrieve_component, searcher)
 
 with gr.Blocks(css=CSS, theme=theme) as demo:
     gr.Markdown(WEBSITE)

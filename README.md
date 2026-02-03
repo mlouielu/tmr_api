@@ -1,12 +1,4 @@
----
-title: TMR
-emoji: 🐨
-colorFrom: yellow
-colorTo: purple
-sdk: gradio
-sdk_version: 3.24.1
-app_file: app.py
-pinned: false
----
+TMR API & Mesh Generator
+------------------------
 
-Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+Derived from `TMR: Text-to-Motion Retrieval Using Contrastive 3D Human Motion Synthesis` demo: https://huggingface.co/spaces/Mathux/TMR
