@@ -6,8 +6,8 @@ import numpy as np
 import gradio as gr
 import gdown
 
-from load import load_model, load_json
-from load import load_unit_motion_embs_splits, load_keyids_splits
+from .load import load_model, load_json
+from .load import load_unit_motion_embs_splits, load_keyids_splits
 
 
 WEBSITE = """

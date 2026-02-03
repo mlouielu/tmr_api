@@ -2,7 +2,7 @@ import os
 import orjson
 import torch
 import numpy as np
-from model import TMR_textencoder
+from .model import TMR_textencoder
 
 EMBS = "data/unit_motion_embs"
 
