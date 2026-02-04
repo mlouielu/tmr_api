@@ -213,7 +213,8 @@ def main():
     items_to_process = data[: args.limit]
     print(f"\nProcessing {len(items_to_process)} results (Limit: {args.limit})...")
 
-    dataset_counts = {}
+    # dataset -> {"total": 0, "found": 0}
+    dataset_stats = {}
 
     for i, item in enumerate(items_to_process):
         amass_rel_path = item.get("AMASS path")
@@ -222,7 +223,10 @@ def main():
 
         # Identify source dataset from path (e.g. "KIT/...", "CMU/...")
         source_dataset = amass_rel_path.split("/")[0] if amass_rel_path else "Unknown"
-        dataset_counts[source_dataset] = dataset_counts.get(source_dataset, 0) + 1
+
+        if source_dataset not in dataset_stats:
+            dataset_stats[source_dataset] = {"total": 0, "found": 0}
+        dataset_stats[source_dataset]["total"] += 1
 
         print(
             f"\n[{i+1}/{len(items_to_process)}] Score: {score} | Dataset: {source_dataset}"
@@ -230,20 +234,24 @@ def main():
         print(f"  Text: {text}")
         print(f"  Path: {amass_rel_path}")
 
+        # Resolve full path using fuzzy matching
+        if amass_rel_path:
+            full_amass_path = find_amass_file(args.amass_root, amass_rel_path)
+        else:
+            full_amass_path = None
+
+        if full_amass_path:
+            dataset_stats[source_dataset]["found"] += 1
+        else:
+            if not args.dry_run:
+                print(
+                    f"  [Error] Could not find file for {amass_rel_path} in {args.amass_root}"
+                )
+
         if args.dry_run:
             continue
 
-        if not amass_rel_path:
-            print("  No AMASS path in result.")
-            continue
-
-        # Resolve full path using fuzzy matching
-        full_amass_path = find_amass_file(args.amass_root, amass_rel_path)
-
         if not full_amass_path:
-            print(
-                f"  [Error] Could not find file for {amass_rel_path} in {args.amass_root}"
-            )
             continue
 
         start_t = item.get("start_time")
@@ -316,13 +324,22 @@ def main():
     print("\n" + "=" * 30)
     print("DATASET SUMMARY")
     print("=" * 30)
-    if not dataset_counts:
+    if not dataset_stats:
         print("No results found.")
     else:
-        # Sort by count descending
-        sorted_counts = sorted(dataset_counts.items(), key=lambda x: x[1], reverse=True)
-        for ds, count in sorted_counts:
-            print(f"{ds}: {count}")
+        # Sort by total count descending
+        sorted_stats = sorted(
+            dataset_stats.items(), key=lambda x: x[1]["total"], reverse=True
+        )
+        total_found = 0
+        total_requested = 0
+        for ds, stats in sorted_stats:
+            total_found += stats["found"]
+            total_requested += stats["total"]
+            print(f"{ds}: {stats['found']} / {stats['total']} found")
+
+        print("-" * 30)
+        print(f"TOTAL: {total_found} / {total_requested} files found")
     print("=" * 30 + "\n")
 
 
